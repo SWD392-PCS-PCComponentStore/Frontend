@@ -1,0 +1,45 @@
+import { apiClient, setToken, clearToken } from './client';
+import type { User } from '@/types';
+
+type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+type RegisterRequest = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+type AuthResponse = {
+  user: User;
+  token: string;
+};
+
+export async function loginApi(data: LoginRequest): Promise<AuthResponse> {
+  const res = await apiClient<AuthResponse>('/auth/login', {
+    method: 'POST',
+    body: data,
+  });
+  setToken(res.token);
+  return res;
+}
+
+export async function registerApi(data: RegisterRequest): Promise<AuthResponse> {
+  const res = await apiClient<AuthResponse>('/auth/register', {
+    method: 'POST',
+    body: data,
+  });
+  setToken(res.token);
+  return res;
+}
+
+export async function logoutApi(): Promise<void> {
+  await apiClient('/auth/logout', { method: 'POST' });
+  clearToken();
+}
+
+export async function getMeApi(): Promise<User> {
+  return apiClient<User>('/auth/me');
+}

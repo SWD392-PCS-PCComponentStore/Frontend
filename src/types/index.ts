@@ -1,0 +1,39 @@
+/**
+ * Shared types for the application
+ */
+
+export type ProductCategory =
+  | 'laptop'
+  | 'pc'
+  | 'cpu'
+  | 'gpu'
+  | 'ram'
+  | 'storage'
+  | 'motherboard'
+  | 'psu'
+  | 'case';
+
+export type Product = {
+  id: string;
+  name: string;
+  category: ProductCategory;
+  price: number;
+  image: string;
+  description: string;
+  specs: Record<string, string>;
+  stock: number;
+};
+
+export type CartItem = {
+  product: Product;
+  quantity: number;
+};
+
+export type ThemeMode = 'dark' | 'light';
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+};
