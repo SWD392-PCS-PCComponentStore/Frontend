@@ -1,5 +1,5 @@
-import { apiClient, setToken, clearToken } from './client';
-import type { User } from '@/types';
+import { apiClient, setToken, clearToken } from "./client";
+import type { User } from "@/types";
 
 type LoginRequest = {
   email: string;
@@ -14,24 +14,26 @@ type RegisterRequest = {
 
 type AuthResponse = {
   user: User;
-  token: string;
+  token?: string;
 };
 
 export async function loginApi(data: LoginRequest): Promise<AuthResponse> {
-  const res = await apiClient<AuthResponse>('/auth/login', {
-    method: 'POST',
+  const res = await apiClient<AuthResponse>("/auth/login", {
+    method: "POST",
     body: data,
   });
-  setToken(res.token);
+  if (res.token) setToken(res.token);
   return res;
 }
 
-export async function registerApi(data: RegisterRequest): Promise<AuthResponse> {
-  const res = await apiClient<AuthResponse>('/auth/register', {
-    method: 'POST',
+export async function registerApi(
+  data: RegisterRequest,
+): Promise<AuthResponse> {
+  const res = await apiClient<AuthResponse>("/auth/register", {
+    method: "POST",
     body: data,
   });
-  setToken(res.token);
+  if (res.token) setToken(res.token);
   return res;
 }
 
