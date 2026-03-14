@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import { Link, useParams, Navigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Minus, ShoppingCart, Check } from 'lucide-react';
-import { toast } from 'sonner';
-import { useTheme } from '@/context/ThemeContext';
-import { useCart } from '@/context/CartContext';
-import { products } from '@/data/products';
-import { CATEGORY_LABELS } from '@/constants/categories';
-import { Breadcrumb } from '@/components/Breadcrumb';
-import type { Product } from '@/types';
+import { useState, useEffect } from "react";
+import { Link, useParams, Navigate } from "react-router-dom";
+import { ArrowLeft, Plus, Minus, ShoppingCart, Check } from "lucide-react";
+import { toast } from "sonner";
+import { useTheme } from "@/context/ThemeContext";
+import { useCart } from "@/context/CartContext";
+import { getProductByIdApi } from "@/api/products";
+import { products } from "@/data/products";
+import { CATEGORY_LABELS } from "@/constants/categories";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import type { Product } from "@/types";
 
 const PAYMENT_PLANS = [
   { id: "full", name: "Thanh toán toàn bộ", months: 0, interest: 0 },
@@ -91,11 +92,13 @@ export function ProductDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Breadcrumb items={[
-        { label: 'Sản phẩm', to: '/products' },
-        { label: categoryLabel, to: `/products/${product.category}` },
-        { label: product.name },
-      ]} />
+      <Breadcrumb
+        items={[
+          { label: "Sản phẩm", to: "/products" },
+          { label: categoryLabel, to: `/products/${product.category}` },
+          { label: product.name },
+        ]}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-sm rounded-xl border border-purple-500/30 overflow-hidden">
