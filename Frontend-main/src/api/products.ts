@@ -32,7 +32,6 @@ type BackendProductResponse = {
   success: boolean;
   data: BackendProduct;
 };
-
 // Map backend product to frontend Product type
 function mapBackendProduct(bp: BackendProduct): Product {
   const categoryMap: Record<string, ProductCategory> = {
@@ -66,6 +65,7 @@ function mapBackendProduct(bp: BackendProduct): Product {
     "Bàn phím": "keyboard",
     Mouse: "mouse",
     Chuột: "mouse",
+    "Chuột": "mouse",
     "PC Bộ": "pc",
     // Vietnamese labels (backend may store Vietnamese names)
     "Bộ vi xử lý (CPU)": "cpu",
@@ -85,7 +85,6 @@ function mapBackendProduct(bp: BackendProduct): Product {
     "Vỏ case": "case",
     "Hệ thống tản nhiệt": "cooling",
     "Tản nhiệt": "cooling",
-
     "Chuột máy tính": "mouse",
     Laptop: "laptop",
     "PC Đồng bộ": "pc",
@@ -101,7 +100,6 @@ function mapBackendProduct(bp: BackendProduct): Product {
     laptops: "laptop",
     pcs: "pc",
   };
-
   const rawName = (bp.category_name || "").trim();
   // perform a case-insensitive lookup for category names
   const lookupKey = rawName.toLowerCase();
@@ -116,6 +114,10 @@ function mapBackendProduct(bp: BackendProduct): Product {
   );
   const category = lookupKey ? categoryMapLower[lookupKey] || "pc" : "pc";
 
+  const rawName = bp.category_name?.trim() || "";
+  const category = rawName
+    ? categoryMap[rawName] || "pc"
+    : "pc";
   return {
     id: String(bp.product_id),
     name: bp.name,
@@ -131,7 +133,6 @@ function mapBackendProduct(bp: BackendProduct): Product {
     stock: bp.stock ?? bp.stock_quantity ?? 0,
   };
 }
-
 export async function getProductsApi(
   params?: ProductListParams,
 ): Promise<Product[]> {

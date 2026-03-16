@@ -324,7 +324,6 @@ export function ManagerProductsPage() {
           <Plus style={{ width: 18, height: 18 }} /> Thêm sản phẩm
         </button>
       </div>
-
       <div
         style={{
           display: "flex",

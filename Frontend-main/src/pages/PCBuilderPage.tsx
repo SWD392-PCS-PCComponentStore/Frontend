@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -24,6 +25,18 @@ import {
 } from "@/constants/categories";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { Product } from "@/types";
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Plus, Trash2, RefreshCw, Send, ClipboardList, X, Clock, CheckCircle, XCircle, Eye, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useTheme } from '@/context/ThemeContext';
+import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { getProductsApi } from '@/api/products';
+import { PC_BUILDER_CATEGORIES, PC_BUILDER_LABELS } from '@/constants/categories';
+import { Breadcrumb } from '@/components/Breadcrumb';
+import type { Product } from '@/types';
+
 
 type UserRequest = {
   id: string;
@@ -135,6 +148,8 @@ export function PCBuilderPage() {
       } catch (err) {
         console.error("Failed to fetch products:", err);
         if (mounted) toast.error("Không thể tải danh sách sản phẩm");
+        console.error('Failed to fetch products:', err);
+        if (mounted) toast.error('Không thể tải danh sách sản phẩm');
       } finally {
         if (mounted) setProductsLoading(false);
       }
@@ -142,8 +157,8 @@ export function PCBuilderPage() {
     return () => {
       mounted = false;
     };
+    return () => { mounted = false; };
   }, []);
-
   const submitRequest = () => {
     if (!requestForm.purpose) {
       toast.error("Vui lòng chọn mục đích sử dụng");
@@ -196,6 +211,7 @@ export function PCBuilderPage() {
   const autoBuild = () => {
     if (allProducts.length === 0) {
       toast.error("Chưa có dữ liệu sản phẩm");
+      toast.error('Chưa có dữ liệu sản phẩm');
       return;
     }
     const newBuild: BuildComponent[] = [];
@@ -207,6 +223,7 @@ export function PCBuilderPage() {
           (p) =>
             p.category === comp.category && p.price <= remaining && p.stock > 0,
         )
+        .filter((p) => p.category === comp.category && p.price <= remaining && p.stock > 0)
         .sort(
           (a, b) =>
             Math.abs(a.price - categoryBudget) -
@@ -584,6 +601,9 @@ export function PCBuilderPage() {
                           <div className="text-2xl font-bold text-purple-400">
                             {comp.product.price.toLocaleString("vi-VN")}₫
                           </div>
+                          {product.stock < 10 && (
+                            <span className="text-xs text-amber-400">Còn {product.stock} sản phẩm</span>
+                          )}
                         </div>
                       </div>
                     ) : available.length > 0 ? (

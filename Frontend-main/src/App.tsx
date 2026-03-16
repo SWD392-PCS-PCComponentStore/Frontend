@@ -35,17 +35,13 @@ export default function App() {
               <Route element={<MainLayout />}>
                 <Route index element={<HomePage />} />
                 <Route path="products" element={<ProductListPage />} />
-                <Route
-                  path="products/:category"
-                  element={<ProductListPage />}
-                />
+                <Route path="products/:category" element={<ProductListPage />} />
                 <Route path="product/:id" element={<ProductDetailPage />} />
                 <Route path="builder" element={<PCBuilderPage />} />
                 <Route path="cart" element={<CartPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>
-
               <Route
                 path="admin"
                 element={
@@ -54,10 +50,10 @@ export default function App() {
                   </RequireRole>
                 }
               >
+              <Route path="admin" element={<RequireRole roles={["admin"]}><AdminLayout /></RequireRole>}>
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
               </Route>
-
               <Route
                 path="staff"
                 element={
@@ -66,10 +62,10 @@ export default function App() {
                   </RequireRole>
                 }
               >
+              <Route path="staff" element={<RequireRole roles={["staff", "admin"]}><StaffLayout /></RequireRole>}>
                 <Route index element={<StaffDashboardPage />} />
                 <Route path="requests" element={<StaffRequestsPage />} />
               </Route>
-
               <Route
                 path="manager"
                 element={
@@ -78,6 +74,7 @@ export default function App() {
                   </RequireRole>
                 }
               >
+              <Route path="manager" element={<RequireRole roles={["manager", "admin"]}><ManagerLayout /></RequireRole>}>
                 <Route index element={<ManagerDashboardPage />} />
                 <Route path="products" element={<ManagerProductsPage />} />
                 <Route path="categories" element={<ManagerCategoriesPage />} />
