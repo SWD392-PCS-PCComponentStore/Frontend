@@ -9,6 +9,7 @@ import {
   getSpecsByProductIdApi,
   type Specification,
 } from "@/api/specifications";
+import { getSpecsByProductIdApi, type Specification } from "@/api/specifications";
 import { CATEGORY_LABELS } from "@/constants/categories";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { Product } from "@/types";
@@ -155,6 +156,7 @@ export function ProductDetailPage() {
                     <span className="font-semibold text-right">
                       {spec.spec_value}
                     </span>
+                    <span className="font-semibold text-right">{spec.spec_value}</span>
                   </div>
                 ))}
               </div>
