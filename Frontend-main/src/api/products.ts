@@ -32,7 +32,6 @@ type BackendProductResponse = {
   success: boolean;
   data: BackendProduct;
 };
-
 // Map backend product to frontend Product type
 function mapBackendProduct(bp: BackendProduct): Product {
   const categoryMap: Record<string, ProductCategory> = {
@@ -65,6 +64,7 @@ function mapBackendProduct(bp: BackendProduct): Product {
     Keyboard: "keyboard",
     "Bàn phím": "keyboard",
     Mouse: "mouse",
+    Chuột: "mouse",
     "Chuột": "mouse",
     "PC Bộ": "pc",
     // Vietnamese labels (backend may store Vietnamese names)
@@ -85,10 +85,7 @@ function mapBackendProduct(bp: BackendProduct): Product {
     "Vỏ case": "case",
     "Hệ thống tản nhiệt": "cooling",
     "Tản nhiệt": "cooling",
-    "Màn hình": "monitor",
-    "Bàn phím": "keyboard",
     "Chuột máy tính": "mouse",
-    Chuột: "mouse",
     Laptop: "laptop",
     "PC Đồng bộ": "pc",
     "Máy tính để bàn": "pc",
@@ -103,12 +100,24 @@ function mapBackendProduct(bp: BackendProduct): Product {
     laptops: "laptop",
     pcs: "pc",
   };
+  const rawName = (bp.category_name || "").trim();
+  // perform a case-insensitive lookup for category names
+  const lookupKey = rawName.toLowerCase();
+  const categoryMapLower: Record<string, ProductCategory> = Object.keys(
+    categoryMap,
+  ).reduce(
+    (acc, k) => {
+      acc[k.toLowerCase()] = categoryMap[k];
+      return acc;
+    },
+    {} as Record<string, ProductCategory>,
+  );
+  const category = lookupKey ? categoryMapLower[lookupKey] || "pc" : "pc";
 
   const rawName = bp.category_name?.trim() || "";
   const category = rawName
     ? categoryMap[rawName] || "pc"
     : "pc";
-
   return {
     id: String(bp.product_id),
     name: bp.name,
@@ -118,11 +127,12 @@ function mapBackendProduct(bp: BackendProduct): Product {
     price: bp.price,
     image: bp.image_url || "https://via.placeholder.com/400",
     description: bp.description || `${bp.brand || ""} ${bp.name}`.trim(),
-    specs: bp.brand ? { Brand: bp.brand } : {},
+    specs: bp.brand
+      ? ({ Brand: String(bp.brand) } as Record<string, string>)
+      : {},
     stock: bp.stock ?? bp.stock_quantity ?? 0,
   };
 }
-
 export async function getProductsApi(
   params?: ProductListParams,
 ): Promise<Product[]> {
