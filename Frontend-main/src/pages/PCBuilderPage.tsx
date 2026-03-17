@@ -40,10 +40,14 @@ type UserRequest = {
   purpose: string;
   note: string;
   buildItems: { category: string; name: string; price: number }[];
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
+  status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'rejected';
   rejectReason?: string;
   staffBuild?: { category: string; name: string; price: number }[];
+  userBuildId?: number | null;
+  buildName?: string | null;
+  totalPrice?: number | null;
   createdAt: string;
+  rawReq?: any;
 };
 
 const PURPOSE_OPTIONS = [
@@ -57,10 +61,187 @@ const PURPOSE_OPTIONS = [
 
 const STATUS_INFO: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: 'Chờ duyệt', color: '#f59e0b', icon: Clock },
-  accepted: { label: 'Đang xử lý', color: '#3b82f6', icon: CheckCircle },
+  assigned: { label: 'Đã phân công', color: '#3b82f6', icon: CheckCircle },
+  in_progress: { label: 'Đang xử lý', color: '#6366f1', icon: Clock },
+  completed: { label: 'Hoàn thành', color: '#10b981', icon: CheckCircle },
+  cancelled: { label: 'Đã hủy', color: '#9ca3af', icon: XCircle },
   rejected: { label: 'Từ chối', color: '#ef4444', icon: XCircle },
-  completed: { label: 'Hoàn thành', color: '#8b5cf6', icon: CheckCircle },
 };
+
+function UserBuildDetail({
+  userBuildId,
+  fallbackName,
+}: {
+  userBuildId: number;
+  fallbackName?: string;
+}) {
+  const { addToCart } = useCart();
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<any>(null);
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const d = await UserBuildsApi.getUserBuildById(String(userBuildId));
+        if (mounted) setDetail(d);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setDetail(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [userBuildId]);
+
+  // Load products for price fallback (API user-builds may not include product_price)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const prods = await getProductsApi({ limit: "1000" });
+        if (mounted) setProducts(prods);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setProducts(null);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const items: any[] =
+    detail?.items || detail?.build_items || detail?.data?.items || [];
+
+  const normalized = items.map((it: any) => {
+    const productId = Number(it.product_id ?? it.productId ?? it.id);
+    const quantity = Number(it.quantity ?? 1);
+    const fallback = products?.find((p) => Number(p.id) === productId);
+    const name = it.product_name || it.name || fallback?.name || `Product #${productId}`;
+    const price = Number(it.product_price || it.price || fallback?.price || 0);
+    const image = it.image_url || it.image || fallback?.image || "https://via.placeholder.com/120";
+    const category = (fallback?.category as any) || "pc";
+    const stock = Number(fallback?.stock ?? 999);
+    return { productId, quantity, name, price, image, category, stock };
+  });
+
+  const total = normalized.reduce(
+    (s, it) => s + (Number(it.price) || 0) * (Number(it.quantity) || 1),
+    0,
+  );
+
+  const addAllToCart = async () => {
+    try {
+      setAdding(true);
+      if (normalized.length === 0) return;
+      for (const it of normalized) {
+        const p: Product = {
+          id: String(it.productId),
+          name: it.name,
+          category: it.category,
+          price: it.price,
+          image: it.image,
+          description: "",
+          specs: {},
+          stock: it.stock,
+        };
+        await addToCart(p, it.quantity || 1);
+      }
+      toast.success("Đã thêm toàn bộ linh kiện vào giỏ hàng");
+    } catch (err) {
+      console.error(err);
+      toast.error("Không thể thêm vào giỏ hàng");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: "#6b7280", marginBottom: 8 }}>
+        Build đã lưu trên hệ thống{fallbackName ? `: ${fallbackName}` : ""}
+      </p>
+      {loading ? (
+        <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", color: "#9ca3af" }}>
+          Đang tải linh kiện...
+        </div>
+      ) : normalized.length === 0 ? (
+        <div style={{ padding: 12, borderRadius: 10, background: "rgba(255,255,255,0.03)", color: "#9ca3af" }}>
+          Không có danh sách linh kiện trong user build này.
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {normalized.map((it, idx) => (
+              <div
+                key={`${it.productId}-${idx}`}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  background: "rgba(59,130,246,0.06)",
+                  border: "1px solid rgba(59,130,246,0.12)",
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: "#d1d5db" }}>
+                  {it.name} (x{it.quantity || 1})
+                </span>
+                <span style={{ color: "#a78bfa", fontWeight: 600 }}>
+                  {Number(it.price || 0).toLocaleString("vi-VN")}₫
+                </span>
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              paddingTop: 10,
+              marginTop: 6,
+              borderTop: "1px solid rgba(255,255,255,0.08)",
+            }}
+          >
+            <span style={{ fontSize: 13, color: "#9ca3af", fontWeight: 700 }}>
+              Tổng
+            </span>
+            <span style={{ fontSize: 16, color: "#10b981", fontWeight: 900 }}>
+              {total.toLocaleString("vi-VN")}₫
+            </span>
+          </div>
+          <button
+            onClick={addAllToCart}
+            disabled={adding}
+            style={{
+              width: "100%",
+              marginTop: 12,
+              padding: "12px",
+              borderRadius: "12px",
+              border: "none",
+              cursor: adding ? "not-allowed" : "pointer",
+              background: "linear-gradient(135deg, #10b981, #06b6d4)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 700,
+              opacity: adding ? 0.7 : 1,
+            }}
+          >
+            {adding ? "Đang thêm..." : "Thêm tất cả vào giỏ hàng"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 type BuildComponent = {
   category: (typeof PC_BUILDER_CATEGORIES)[number];
@@ -160,18 +341,35 @@ export function PCBuilderPage() {
               }
             }
 
+            let staffBuildArr = req.staffBuild || req.staff_build || [];
+            if (typeof staffBuildArr === 'string') {
+              try { staffBuildArr = JSON.parse(staffBuildArr); } catch(e) { staffBuildArr = []; }
+            }
+
             return {
               id: String(req.request_id || req.id || ""),
               budget: req.budget_range || 0,
               purpose,
               note,
-              buildItems: req.buildItems || [],
+              buildItems: (req.buildItems || req.userBuild || []).map((b: any) => ({
+                category: b.category,
+                name: b.name || b.productName || '',
+                price: Number(b.price) || 0
+              })),
               status: req.status || "pending",
               rejectReason: req.rejectReason,
-              staffBuild: req.staffBuild,
+              staffBuild: Array.isArray(staffBuildArr) ? staffBuildArr.map((b: any) => ({
+                category: b.category,
+                name: b.name || b.productName || '',
+                price: Number(b.price) || 0
+              })) : undefined,
+              userBuildId: req.user_build_id ?? req.userBuildId ?? null,
+              buildName: req.build_name ?? req.buildName ?? null,
+              totalPrice: req.total_price ?? req.totalPrice ?? null,
               createdAt: req.created_at
                 ? req.created_at.split("T")[0]
                 : new Date().toISOString().split("T")[0],
+              rawReq: req,
             };
           });
           setMyRequests(formattedRequests);
@@ -1007,7 +1205,7 @@ export function PCBuilderPage() {
           <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '560px', borderRadius: '20px', padding: '28px', background: isDark ? 'linear-gradient(160deg, #130d30, #0f0e17)' : '#fff', border: isDark ? '1px solid rgba(139,92,246,0.2)' : '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, color: isDark ? '#fff' : '#111', margin: 0 }}>{viewRequest.id}</h2>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: isDark ? '#fff' : '#111', margin: 0 }}>Yêu cầu tư vấn</h2>
                 <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600, color: STATUS_INFO[viewRequest.status].color, background: `${STATUS_INFO[viewRequest.status].color}15` }}>{STATUS_INFO[viewRequest.status].label}</span>
               </div>
             </div>
@@ -1156,7 +1354,26 @@ export function PCBuilderPage() {
                     </p>
                   </div>
                 )}
-              {viewRequest.status === "completed" && viewRequest.staffBuild && (
+              {/* Completed: Prefer user_build_id (server-stored build) */}
+              {viewRequest.status === "completed" && viewRequest.userBuildId && (
+                <div style={{ marginBottom: "18px" }}>
+                  {typeof viewRequest.totalPrice === "number" && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 700 }}>Tổng</span>
+                      <span style={{ fontSize: 16, color: "#10b981", fontWeight: 900 }}>
+                        {Number(viewRequest.totalPrice || 0).toLocaleString("vi-VN")}₫
+                      </span>
+                    </div>
+                  )}
+                  <UserBuildDetail
+                    userBuildId={Number(viewRequest.userBuildId)}
+                    fallbackName={viewRequest.buildName || undefined}
+                  />
+                </div>
+              )}
+
+              {/* Fallback: show staffBuild only when no user_build_id */}
+              {viewRequest.status === "completed" && !viewRequest.userBuildId && viewRequest.staffBuild && (
                 <div style={{ marginBottom: "18px" }}>
                   <p
                     style={{

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import StaffBuildRequestsApi from '@/api/staffBuildRequests';
 
 export function StaffDashboardPage() {
-  const [stats, setStats] = useState({ total: 0, pending: 0, accepted: 0, completed: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, in_progress: 0, completed: 0, rejected: 0, assigned: 0, cancelled: 0 });
   const [recentRequests, setRecentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,14 +17,18 @@ export function StaffDashboardPage() {
         if (mounted) {
           const list = reqs || [];
           
-          let pending = 0, accepted = 0, completed = 0;
+          let pending = 0, in_progress = 0, completed = 0, rejected = 0, assigned = 0, cancelled = 0;
           list.forEach((r: any) => {
             if (r.status === 'pending') pending++;
-            else if (r.status === 'accepted') accepted++;
+            else if (r.status === 'in_progress') in_progress++;
             else if (r.status === 'completed') completed++;
+            else if (r.status === 'rejected') rejected++;
+            else if (r.status === 'assigned') assigned++;
+            else if (r.status === 'cancelled') cancelled++;
+            else if (r.status === 'accepted') in_progress++; // Fallback for old data
           });
 
-          setStats({ total: list.length, pending, accepted, completed });
+          setStats({ total: list.length, pending, in_progress, completed, rejected, assigned, cancelled });
 
           // Map and slice top 5
           const recent = list.slice(0, 5).map((req: any) => {
@@ -37,9 +41,12 @@ export function StaffDashboardPage() {
             let statusColor = '#9ca3af';
             let statusLabel = req.status || 'Chờ duyệt';
             if (req.status === 'pending') { statusColor = '#f59e0b'; statusLabel = 'Chờ duyệt'; }
-            if (req.status === 'accepted') { statusColor = '#3b82f6'; statusLabel = 'Đã duyệt'; }
-            if (req.status === 'completed') { statusColor = '#8b5cf6'; statusLabel = 'Hoàn thành'; }
+            if (req.status === 'assigned') { statusColor = '#3b82f6'; statusLabel = 'Đã phân công'; }
+            if (req.status === 'in_progress') { statusColor = '#6366f1'; statusLabel = 'Đang xử lý'; }
+            if (req.status === 'completed') { statusColor = '#10b981'; statusLabel = 'Hoàn thành'; }
             if (req.status === 'rejected') { statusColor = '#ef4444'; statusLabel = 'Từ chối'; }
+            if (req.status === 'cancelled') { statusColor = '#9ca3af'; statusLabel = 'Đã hủy'; }
+            if (req.status === 'accepted') { statusColor = '#6366f1'; statusLabel = 'Đang xử lý'; } // fallback
 
             return {
               id: req.request_id || req.id || 'N/A',
@@ -65,8 +72,8 @@ export function StaffDashboardPage() {
   const STATS_CARDS = [
     { label: 'Tổng requests', value: stats.total, icon: ClipboardList, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
     { label: 'Chờ duyệt', value: stats.pending, icon: Clock, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
-    { label: 'Đã duyệt', value: stats.accepted, icon: CheckCircle, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
-    { label: 'Hoàn thành', value: stats.completed, icon: CheckCircle, color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
+    { label: 'Đang xử lý', value: stats.in_progress + stats.assigned, icon: CheckCircle, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
+    { label: 'Hoàn thành', value: stats.completed, icon: CheckCircle, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
   ];
 
   if (loading) {
