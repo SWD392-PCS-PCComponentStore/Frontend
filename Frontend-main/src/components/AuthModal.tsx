@@ -274,11 +274,11 @@ function LoginForm({
           if (u.role === "admin") navigate("/admin");
           else if (u.role === "staff") navigate("/staff");
           else if (u.role === "manager") navigate("/manager");
-          else navigate("/profile");
-        } else {
-          navigate("/profile");
+          // For customers and others, we just stay on the current page.
+          // The modal is already closed by AuthContext's login function.
         }
       } catch (_) {
+        // Fallback to home if something goes wrong
         navigate("/");
       }
     }

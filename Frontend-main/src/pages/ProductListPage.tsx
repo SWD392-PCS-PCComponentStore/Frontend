@@ -452,7 +452,7 @@ function ProductCard({
             <img
               src={product.image}
               alt={product.name}
-              className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-300"
+              className="mx-auto p-4 object-contain max-h-[160px] w-auto group-hover:scale-105 transition-transform duration-300"
             />
           </div>
         </Link>
@@ -518,8 +518,7 @@ function ProductCard({
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-300 md:absolute md:inset-0"
-            style={{ position: 'relative' }}
+            className="mx-auto p-4 object-contain max-h-[160px] w-auto group-hover:scale-105 transition-transform duration-300"
           />
         </Link>
         <div className="flex-1 p-6">

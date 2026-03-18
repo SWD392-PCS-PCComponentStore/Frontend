@@ -12,11 +12,15 @@ import {
   ChevronDown,
   User,
   Settings,
+  ShieldCheck,
+  Users,
+  Package,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { Toaster } from "@/components/Toaster";
+import { toast } from "sonner";
 
 export function MainLayout() {
   const theme = useTheme();
@@ -183,10 +187,18 @@ export function MainLayout() {
                         : "hover:bg-purple-50 bg-white border border-gray-100 shadow-sm"
                     } focus:outline-none focus:ring-2 focus:ring-purple-400/40 hover:scale-102`}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center ring-2 ring-purple-400/30">
-                      <span className="text-white text-sm font-bold">
-                        {auth.user?.name?.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-purple-400/30 overflow-hidden bg-gradient-to-br from-purple-500 to-blue-500">
+                      {auth.user?.avatar ? (
+                        <img
+                          src={auth.user.avatar}
+                          alt={auth.user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white text-sm font-bold">
+                          {auth.user?.name?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <span
                       className={`hidden md:inline text-sm font-semibold max-w-[140px] truncate ${
@@ -235,11 +247,19 @@ export function MainLayout() {
                                 className={`absolute inset-0 rounded-full ${theme.isDark ? "bg-purple-600/30" : "bg-purple-400/20"} blur-lg`}
                               />
                               <div
-                                className={`w-16 h-16 bg-gradient-to-br from-purple-500 via-purple-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ${theme.isDark ? "ring-purple-400/40" : "ring-purple-300/50"} relative z-10 shadow-lg`}
+                                className={`w-16 h-16 bg-gradient-to-br from-purple-500 via-purple-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ${theme.isDark ? "ring-purple-400/40" : "ring-purple-300/50"} relative z-10 shadow-lg overflow-hidden`}
                               >
-                                <span className="text-white text-xl font-bold">
-                                  {auth.user?.name?.charAt(0).toUpperCase()}
-                                </span>
+                                {auth.user?.avatar ? (
+                                  <img
+                                    src={auth.user.avatar}
+                                    alt={auth.user.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white text-xl font-bold">
+                                    {auth.user?.name?.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="min-w-0 flex-1">
@@ -253,19 +273,7 @@ export function MainLayout() {
                               >
                                 {auth.user?.email}
                               </p>
-                              <div className="mt-2.5">
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                    theme.isDark
-                                      ? "bg-gradient-to-r from-purple-600/50 to-blue-600/50 text-purple-100"
-                                      : "bg-gradient-to-r from-purple-200/60 to-blue-200/60 text-purple-800"
-                                  }`}
-                                >
-                                  {auth.user?.role
-                                    ? auth.user.role.toUpperCase()
-                                    : "CUSTOMER"}
-                                </span>
-                              </div>
+                              {/* Role text removed as requested */}
                             </div>
                           </div>
                         </div>
@@ -288,6 +296,59 @@ export function MainLayout() {
                             <span>Thông tin cá nhân</span>
                           </button>
 
+                          {/* Customer specific buttons */}
+                          {(auth.user?.role === "customer" || !auth.user?.role) && (
+                            <button
+                              onClick={() => {
+                                navigate("/orders");
+                                setUserMenuOpen(false);
+                              }}
+                              className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all transform ${
+                                theme.isDark
+                                  ? "text-gray-100 hover:bg-gradient-to-r hover:from-green-500/20 hover:to-emerald-500/20 hover:shadow-lg hover:shadow-green-500/10"
+                                  : "text-gray-800 hover:bg-gradient-to-r hover:from-green-100/60 hover:to-emerald-100/40"
+                              } hover:scale-105 active:scale-95`}
+                            >
+                              <Package className="w-4 h-4 text-green-500 group-hover:text-green-400 transition-colors flex-shrink-0" />
+                              <span>Theo dõi đơn hàng</span>
+                            </button>
+                          )}
+
+                           {/* Admin specific extra buttons */}
+                          {auth.user?.role === "admin" && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  navigate("/manager");
+                                  setUserMenuOpen(false);
+                                }}
+                                className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all transform ${
+                                  theme.isDark
+                                    ? "text-gray-100 hover:bg-gradient-to-r hover:from-orange-500/20 hover:to-yellow-500/20 hover:shadow-lg hover:shadow-orange-500/10"
+                                    : "text-gray-800 hover:bg-gradient-to-r hover:from-orange-100/60 hover:to-yellow-100/40"
+                                } hover:scale-105 active:scale-95`}
+                              >
+                                <ShieldCheck className="w-4 h-4 text-orange-500 group-hover:text-orange-400 transition-colors flex-shrink-0" />
+                                <span>Trang Quản lý</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  navigate("/staff");
+                                  setUserMenuOpen(false);
+                                }}
+                                className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all transform ${
+                                  theme.isDark
+                                    ? "text-gray-100 hover:bg-gradient-to-r hover:from-blue-500/20 hover:to-green-500/20 hover:shadow-lg hover:shadow-blue-500/10"
+                                    : "text-gray-800 hover:bg-gradient-to-r hover:from-blue-100/60 hover:to-green-100/40"
+                                } hover:scale-105 active:scale-95`}
+                              >
+                                <Users className="w-4 h-4 text-blue-500 group-hover:text-blue-400 transition-colors flex-shrink-0" />
+                                <span>Trang Nhân viên</span>
+                              </button>
+                            </>
+                          )}
+
+                          {/* Default Dashboard button based on role */}
                           {(auth.user?.role === "admin" ||
                             auth.user?.role === "staff" ||
                             auth.user?.role === "manager") && (
@@ -308,7 +369,7 @@ export function MainLayout() {
                               } hover:scale-105 active:scale-95`}
                             >
                               <Settings className="w-4 h-4 text-blue-500 group-hover:text-blue-400 transition-colors flex-shrink-0" />
-                              <span>Bảng điều khiển</span>
+                              <span>{auth.user?.role === "admin" ? "Trang Quản trị" : "Bảng điều khiển"}</span>
                             </button>
                           )}
 
@@ -316,6 +377,8 @@ export function MainLayout() {
                             onClick={() => {
                               auth.logout();
                               setUserMenuOpen(false);
+                              navigate("/");
+                              toast.success("Đã đăng xuất thành công");
                             }}
                             className={`group w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all transform ${
                               theme.isDark

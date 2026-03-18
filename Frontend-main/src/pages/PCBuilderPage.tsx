@@ -794,11 +794,11 @@ export function PCBuilderPage() {
                 <div
                   className={`flex justify-between text-xs mt-1 ${isDark ? "text-gray-400" : "text-gray-600"}`}
                 >
-                  <span>10M</span>
+                  <span>10.000.000₫</span>
                   <span className="text-lg font-bold text-purple-400">
-                    {(budget / 1000000).toFixed(0)}M
+                    {budget.toLocaleString("vi-VN")}₫
                   </span>
-                  <span>100M</span>
+                  <span>100.000.000₫</span>
                 </div>
               </label>
               <div className="flex gap-3">
@@ -1047,7 +1047,7 @@ export function PCBuilderPage() {
                               <p
                                 className={`text-2xl font-bold ${isDark ? "text-purple-400" : "text-purple-600"}`}
                               >
-                                {(comp.product.price / 1000000).toFixed(1)}M₫
+                                {comp.product.price.toLocaleString("vi-VN")}₫
                               </p>
                               {comp.product.stock < 10 && (
                                 <p className="text-xs text-orange-500 font-semibold">

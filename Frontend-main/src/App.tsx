@@ -9,8 +9,9 @@ import {
   PCBuilderPage,
   CartPage,
   CheckoutPage,
+  ProfilePage,
+  MyOrdersPage,
 } from "@/pages";
-import ProfilePage from "@/pages/ProfilePage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 // import { AdminOrdersPage } from "@/pages/admin/AdminOrdersPage"; // Moved to manager
@@ -38,26 +39,51 @@ export default function App() {
               <Route element={<MainLayout />}>
                 <Route index element={<HomePage />} />
                 <Route path="products" element={<ProductListPage />} />
-                <Route path="products/:category" element={<ProductListPage />} />
+                <Route
+                  path="products/:category"
+                  element={<ProductListPage />}
+                />
                 <Route path="product/:id" element={<ProductDetailPage />} />
                 <Route path="builder" element={<PCBuilderPage />} />
                 <Route path="cart" element={<CartPage />} />
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ProfilePage />} />
+                <Route path="orders" element={<MyOrdersPage />} />
               </Route>
 
-              <Route path="admin" element={<RequireRole roles={["admin"]}><AdminLayout /></RequireRole>}>
+              <Route
+                path="admin"
+                element={
+                  <RequireRole roles={["admin"]}>
+                    <AdminLayout />
+                  </RequireRole>
+                }
+              >
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
               </Route>
 
-              <Route path="staff" element={<RequireRole roles={["staff", "admin"]}><StaffLayout /></RequireRole>}>
+              <Route
+                path="staff"
+                element={
+                  <RequireRole roles={["staff", "admin"]}>
+                    <StaffLayout />
+                  </RequireRole>
+                }
+              >
                 <Route index element={<StaffDashboardPage />} />
                 <Route path="requests" element={<StaffRequestsPage />} />
                 <Route path="builds" element={<StaffPcBuildsPage />} />
               </Route>
 
-              <Route path="manager" element={<RequireRole roles={["manager", "admin"]}><ManagerLayout /></RequireRole>}>
+              <Route
+                path="manager"
+                element={
+                  <RequireRole roles={["manager", "admin"]}>
+                    <ManagerLayout />
+                  </RequireRole>
+                }
+              >
                 <Route index element={<ManagerDashboardPage />} />
                 <Route path="products" element={<ManagerProductsPage />} />
                 <Route path="categories" element={<ManagerCategoriesPage />} />

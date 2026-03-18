@@ -44,8 +44,10 @@ export type User = {
   name: string;
   email: string;
   role?: UserRole;
-  phone?: string;
+  status?: string;
+  phone?: string | null;
   address?: string | null;
+  avatar?: string | null;
   created_at: string;
 };
 

@@ -16,6 +16,7 @@ type AuthModal = "login" | "register" | null;
 type AuthContextValue = {
   user: User | null;
   isLoggedIn: boolean;
+  updateUser: (user: User) => void;
   login: (email: string, password: string) => Promise<boolean>;
   register: (
     name: string,
@@ -116,6 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((u: User) => {
+    setUser(u);
+    saveUser(u);
+  }, []);
+
   // try to restore session if token exists
   useEffect(() => {
     let mounted = true;
@@ -137,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoggedIn: !!user,
+        updateUser,
         login,
         register,
         logout,
