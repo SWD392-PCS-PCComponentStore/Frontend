@@ -63,6 +63,7 @@ export async function updateUserApi(
     status?: string;
     phone?: string;
     address?: string;
+    avatar?: string;
   },
 ): Promise<User> {
   const res = await apiClient<MutateUserResponse>(`/users/${id}`, {

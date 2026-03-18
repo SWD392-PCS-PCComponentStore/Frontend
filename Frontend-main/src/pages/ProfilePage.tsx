@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User as UserIcon,
@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { updateUserApi } from "@/api/users";
+import { uploadImage } from "@/api/uploads";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import type { User } from "@/types";
 
@@ -25,8 +26,9 @@ type EditMode = "profile" | "password" | null;
 
 export function ProfilePage() {
   const { isDark } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export function ProfilePage() {
 
   // Profile edit form
   const [formName, setFormName] = useState(user?.name || "");
+  const [formEmail, setFormEmail] = useState(user?.email || "");
   const [formPhone, setFormPhone] = useState(user?.phone || "");
   const [formAddress, setFormAddress] = useState(user?.address || "");
 
@@ -46,6 +49,7 @@ export function ProfilePage() {
     if (user) {
       setProfileData(user);
       setFormName(user.name);
+      setFormEmail(user.email);
       setFormPhone(user.phone || "");
       setFormAddress(user.address || "");
     }
@@ -74,8 +78,8 @@ export function ProfilePage() {
   }
 
   const handleUpdateProfile = async () => {
-    if (!user || !formName.trim()) {
-      toast.error("Vui lòng điền đầy đủ thông tin");
+    if (!user || !formName.trim() || !formEmail.trim()) {
+      toast.error("Vui lòng điền đầy đủ họ tên và email");
       return;
     }
 
@@ -83,12 +87,13 @@ export function ProfilePage() {
       setLoading(true);
       const updatedUser = await updateUserApi(user.user_id, {
         name: formName,
+        email: formEmail,
         phone: formPhone,
         address: formAddress,
       });
 
-      // Update local storage
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      // Update auth context + local state from backend response
+      updateUser(updatedUser);
       setProfileData(updatedUser);
       setEditMode(null);
       toast.success("Cập nhật thông tin thành công");
@@ -119,9 +124,12 @@ export function ProfilePage() {
 
     try {
       setLoading(true);
-      await updateUserApi(user.user_id, {
+      const updatedUser = await updateUserApi(user.user_id, {
         password: newPassword,
       });
+
+      // update auth user data returned by backend
+      updateUser(updatedUser);
 
       setCurrentPassword("");
       setNewPassword("");
@@ -143,6 +151,35 @@ export function ProfilePage() {
     navigate("/");
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Kích thước ảnh không được vượt quá 5MB");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const imageUrl = await uploadImage(file);
+      const updatedUser = await updateUserApi(user!.user_id, {
+        avatar: imageUrl,
+      });
+      updateUser(updatedUser);
+      setProfileData(updatedUser);
+      toast.success("Cập nhật ảnh đại diện thành công");
+    } catch (error) {
+      toast.error("Không thể tải ảnh lên, vui lòng thử lại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -161,6 +198,39 @@ export function ProfilePage() {
         return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
       default:
         return "bg-purple-500/20 text-purple-300 border-purple-500/30";
+    }
+  };
+
+  const getStatusConfig = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case "active":
+        return {
+          label: "Hoạt động",
+          className: isDark
+            ? "bg-gradient-to-r from-green-700/20 to-emerald-700/20 text-green-400 border-green-400/60 ring-1 ring-green-500/30 shadow-[0_0_12px_rgba(34,197,94,0.22)]"
+            : "bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200 shadow-sm",
+        };
+      case "inactive":
+        return {
+          label: "Không hoạt động",
+          className: isDark
+            ? "bg-gray-500/20 text-gray-300 border-gray-500/30"
+            : "bg-gray-100 text-gray-700 border-gray-200",
+        };
+      case "banned":
+        return {
+          label: "Bị khóa",
+          className: isDark
+            ? "bg-red-500/20 text-red-300 border-red-500/30"
+            : "bg-red-100 text-red-700 border-red-200",
+        };
+      default:
+        return {
+          label: status || "Hoạt động",
+          className: isDark
+            ? "bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border-green-500/40 shadow-[0_0_12px_rgba(34,197,94,0.15)]"
+            : "bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200 shadow-sm",
+        };
     }
   };
 
@@ -198,22 +268,42 @@ export function ProfilePage() {
                 {/* Avatar */}
                 <div className="flex items-end gap-4">
                   <div
-                    className={`w-32 h-32 rounded-2xl flex items-center justify-center border-4 ${
+                    onClick={handleAvatarClick}
+                    className={`group relative w-32 h-32 rounded-2xl flex items-center justify-center border-4 cursor-pointer overflow-hidden transition-all ${
                       isDark
-                        ? "bg-purple-900/50 border-purple-700"
-                        : "bg-purple-100 border-purple-300"
+                        ? "bg-purple-900/50 border-purple-700 hover:border-purple-400"
+                        : "bg-purple-100 border-purple-300 hover:border-purple-500"
                     }`}
                   >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                    />
+
                     {profileData?.avatar ? (
-                      <img
-                        src={profileData.avatar}
-                        alt={profileData.name}
-                        className="w-full h-full object-cover rounded-2xl"
-                      />
+                      <>
+                        <img
+                          src={profileData.avatar}
+                          alt={profileData.name}
+                          className="w-full h-full object-cover rounded-2xl group-hover:opacity-75 transition-opacity"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                          <Camera className="w-8 h-8 text-white" />
+                        </div>
+                      </>
                     ) : (
-                      <div className="text-center">
+                      <div className="text-center group-hover:scale-110 transition-transform">
                         <UserIcon className="w-12 h-12 mx-auto mb-2 text-purple-400" />
                         <p className="text-xs text-gray-400">Ảnh đại diện</p>
+                      </div>
+                    )}
+
+                    {loading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                        <Loader className="w-8 h-8 text-white animate-spin" />
                       </div>
                     )}
                   </div>
@@ -383,8 +473,10 @@ export function ProfilePage() {
                     >
                       Trạng thái
                     </span>
-                    <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm font-semibold border border-green-500/30">
-                      Hoạt động
+                    <span
+                      className={`inline-flex items-center justify-center px-4 py-1.5 min-h-[30px] rounded-full text-sm font-bold border transition-all ${getStatusConfig(profileData?.status).className}`}
+                    >
+                      {getStatusConfig(profileData?.status).label}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -393,7 +485,7 @@ export function ProfilePage() {
                     >
                       Vai trò
                     </span>
-                    <span className="text-sm font-semibold">
+                    <span className="inline-flex items-center justify-center px-4 py-1.5 min-h-[30px] text-sm font-bold">
                       {getRoleLabel(profileData?.role)}
                     </span>
                   </div>
@@ -473,6 +565,24 @@ export function ProfilePage() {
                       ? "bg-purple-900/50 border-purple-500/30 focus:border-purple-500"
                       : "bg-purple-50 border-purple-200 focus:border-purple-500"
                   }`}
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-semibold mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border outline-none transition-colors ${
+                    isDark
+                      ? "bg-purple-900/50 border-purple-500/30 focus:border-purple-500"
+                      : "bg-purple-50 border-purple-200 focus:border-purple-500"
+                  }`}
+                  placeholder="Nhập email"
                 />
               </div>
 

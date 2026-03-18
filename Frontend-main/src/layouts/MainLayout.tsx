@@ -186,10 +186,18 @@ export function MainLayout() {
                         : "hover:bg-purple-50 bg-white border border-gray-100 shadow-sm"
                     } focus:outline-none focus:ring-2 focus:ring-purple-400/40 hover:scale-102`}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center ring-2 ring-purple-400/30">
-                      <span className="text-white text-sm font-bold">
-                        {auth.user?.name?.charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-purple-400/30 overflow-hidden bg-gradient-to-br from-purple-500 to-blue-500">
+                      {auth.user?.avatar ? (
+                        <img
+                          src={auth.user.avatar}
+                          alt={auth.user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white text-sm font-bold">
+                          {auth.user?.name?.charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <span
                       className={`hidden md:inline text-sm font-semibold max-w-[140px] truncate ${
@@ -238,11 +246,19 @@ export function MainLayout() {
                                 className={`absolute inset-0 rounded-full ${theme.isDark ? "bg-purple-600/30" : "bg-purple-400/20"} blur-lg`}
                               />
                               <div
-                                className={`w-16 h-16 bg-gradient-to-br from-purple-500 via-purple-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ${theme.isDark ? "ring-purple-400/40" : "ring-purple-300/50"} relative z-10 shadow-lg`}
+                                className={`w-16 h-16 bg-gradient-to-br from-purple-500 via-purple-400 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ${theme.isDark ? "ring-purple-400/40" : "ring-purple-300/50"} relative z-10 shadow-lg overflow-hidden`}
                               >
-                                <span className="text-white text-xl font-bold">
-                                  {auth.user?.name?.charAt(0).toUpperCase()}
-                                </span>
+                                {auth.user?.avatar ? (
+                                  <img
+                                    src={auth.user.avatar}
+                                    alt={auth.user.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white text-xl font-bold">
+                                    {auth.user?.name?.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="min-w-0 flex-1">
