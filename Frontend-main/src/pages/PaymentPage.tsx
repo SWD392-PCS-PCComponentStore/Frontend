@@ -55,25 +55,24 @@ export function PaymentPage() {
   ) => {
     try {
       setIsLoading(true);
-      let res;
-      if (type === "online") {
-        res = await createQrFullPayment();
-      } else {
-        res = await createQrInstallmentPayment(3); // Default to 3 months
-      }
+      // Backend trả { success, data: { payment_url, payment_id, ... } } — unwrap data
+      const res = type === "online"
+        ? await createQrFullPayment()
+        : await createQrInstallmentPayment(3);
+      const payload = res?.data ?? res;
 
       // If it's a redirect URL (VNPay mock)
       if (
-        res.payment_url ||
-        (res.qr_url &&
-          res.qr_url.startsWith("http") &&
-          !res.qr_url.includes("base64"))
+        payload.payment_url ||
+        (payload.qr_url &&
+          payload.qr_url.startsWith("http") &&
+          !payload.qr_url.includes("base64"))
       ) {
-        window.location.href = res.payment_url || res.qr_url;
+        window.location.href = payload.payment_url || payload.qr_url;
         return;
       }
 
-      setQrData(res);
+      setQrData(payload);
       setSelectedOrder(order);
       setShowQr(true);
     } catch (error: any) {
@@ -240,8 +239,8 @@ export function PaymentPage() {
       {/* QR Modal */}
       {showQr && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-gradient-to-br from-purple-900/95 to-purple-800/95 backdrop-blur-sm rounded-2xl border border-purple-500/30 p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-6 text-center text-purple-400">
+          <div className={`rounded-2xl p-8 max-w-md w-full ${isDark ? "bg-gradient-to-br from-purple-900/95 to-purple-800/95 backdrop-blur-sm border border-purple-500/30" : "bg-white border border-gray-200 shadow-xl"}`}>
+            <h2 className={`text-2xl font-bold mb-6 text-center ${isDark ? "text-purple-400" : "text-purple-600"}`}>
               Quét mã QR để thanh toán
             </h2>
 
@@ -255,10 +254,10 @@ export function PaymentPage() {
                   />
                 </div>
 
-                <div className="space-y-3 mb-6 p-4 bg-black/20 rounded-lg">
+                <div className={`space-y-3 mb-6 p-4 rounded-lg ${isDark ? "bg-black/20" : "bg-gray-50 border border-gray-200"}`}>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Số tiền:</span>
-                    <span className="font-semibold">
+                    <span className={isDark ? "text-gray-400" : "text-gray-600"}>Số tiền:</span>
+                    <span className={`font-semibold ${isDark ? "text-white" : "text-black"}`}>
                       {(
                         qrData.total_amount ?? selectedOrder.total_amount
                       ).toLocaleString("vi-VN")}
@@ -266,21 +265,21 @@ export function PaymentPage() {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Đơn hàng:</span>
-                    <span className="font-semibold">
+                    <span className={isDark ? "text-gray-400" : "text-gray-600"}>Đơn hàng:</span>
+                    <span className={`font-semibold ${isDark ? "text-white" : "text-black"}`}>
                       #{selectedOrder.order_id}
                     </span>
                   </div>
                   {qrData.payment_id && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Payment ID:</span>
-                      <span className="font-semibold">{qrData.payment_id}</span>
+                      <span className={isDark ? "text-gray-400" : "text-gray-600"}>Payment ID:</span>
+                      <span className={`font-semibold ${isDark ? "text-white" : "text-black"}`}>{qrData.payment_id}</span>
                     </div>
                   )}
                   {qrData.bank_info && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Ngân hàng:</span>
-                      <span className="font-semibold">
+                      <span className={isDark ? "text-gray-400" : "text-gray-600"}>Ngân hàng:</span>
+                      <span className={`font-semibold ${isDark ? "text-white" : "text-black"}`}>
                         {qrData.bank_info.bank_name} •{" "}
                         {qrData.bank_info.account_no}
                       </span>
@@ -288,8 +287,8 @@ export function PaymentPage() {
                   )}
                   {qrData.months && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Kỳ:</span>
-                      <span className="font-semibold">
+                      <span className={isDark ? "text-gray-400" : "text-gray-600"}>Kỳ:</span>
+                      <span className={`font-semibold ${isDark ? "text-white" : "text-black"}`}>
                         {qrData.months} tháng
                       </span>
                     </div>
@@ -298,18 +297,18 @@ export function PaymentPage() {
               </>
             )}
 
-            <p className="text-sm text-gray-400 text-center mb-4">
+            <p className={`text-sm text-center mb-4 ${isDark ? "text-gray-400" : "text-gray-600"}`}>
               Quét mã QR này bằng ứng dụng ngân hàng hoặc ví điện tử
             </p>
 
-            <div className="text-center text-sm text-purple-300 bg-purple-500/10 rounded-lg p-3 mb-4">
-              <Loader className="w-4 h-4 animate-spin mx-auto mb-1 text-purple-400" />
+            <div className={`text-center text-sm rounded-lg p-3 mb-4 ${isDark ? "text-purple-300 bg-purple-500/10" : "text-purple-600 bg-purple-50"}`}>
+              <Loader className={`w-4 h-4 animate-spin mx-auto mb-1 ${isDark ? "text-purple-400" : "text-purple-500"}`} />
               Sau khi thanh toán, hệ thống sẽ tự động cập nhật.
             </div>
 
             <button
               onClick={() => setShowQr(false)}
-              className="w-full py-2 bg-white/10 rounded-lg font-semibold hover:bg-white/20 transition-colors"
+              className={`w-full py-2 rounded-lg font-semibold transition-colors ${isDark ? "bg-white/10 hover:bg-white/20 text-white" : "bg-gray-100 hover:bg-gray-200 text-black border border-gray-300"}`}
             >
               Đóng
             </button>
