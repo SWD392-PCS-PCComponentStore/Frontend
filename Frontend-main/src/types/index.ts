@@ -70,6 +70,8 @@ export type OrderDetail = {
   shipping_address: string | null;
   payment_type: "One-time" | "Installment" | "COD";
   payment_method?: string | null;
+  payment_id?: number | null;
+  payment_status?: string | null;
   user_name?: string;
   user_email?: string;
   user_phone?: string | null;

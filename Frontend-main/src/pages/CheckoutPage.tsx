@@ -11,13 +11,14 @@ import { createOrderApi, CreateOrderRequest } from "@/api/orders";
 import {
   createQrFullPayment,
   createQrInstallmentPayment,
+  confirmPayment,
 } from "@/api/payments";
 import { getPromotionByCodeApi } from "@/api/promotions";
 import type { InstallmentPlan } from "@/types";
 
 const INSTALLMENT_PLANS: InstallmentPlan[] = [
   { id: "3-months", name: "Trả góp 3 tháng", months: 3, interest: 0 },
-  { id: "5-months", name: "Trả góp 5 tháng", months: 5, interest: 0.6 },
+  { id: "6-months", name: "Trả góp 6 tháng", months: 6, interest: 0.48 },
   { id: "9-months", name: "Trả góp 9 tháng", months: 9, interest: 0.84 },
   { id: "12-months", name: "Trả góp 12 tháng", months: 12, interest: 1.2 },
 ];
@@ -37,6 +38,7 @@ export function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCartItems, setSelectedCartItems] = useState<number[]>([]);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [qrPaymentData, setQrPaymentData] = useState<Record<string, unknown> | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     fullName: user?.name || "",
@@ -50,26 +52,14 @@ export function CheckoutPage() {
   const [promotionInput, setPromotionInput] = useState("");
   const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  // Auto-select all cart items on component mount and check for payment success
+  // Auto-select all cart items on component mount
   useEffect(() => {
     if (cart.length > 0 && selectedCartItems.length === 0) {
       setSelectedCartItems(cart.map((item) => item.cart_item_id));
     }
-
-    // Check for payment success from VNPay return
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("vnp_ResponseCode") === "00" || params.get("success") === "true") {
-      setStep("success");
-      loadCart();
-      toast.success("Thanh toán thành công!");
-      // Remove query params from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      setTimeout(() => {
-        navigate("/");
-      }, 5000);
-    }
-  }, [cart, selectedCartItems.length, navigate, loadCart]);
+  }, [cart, selectedCartItems.length]);
 
   const selectedPlan = INSTALLMENT_PLANS.find((p) => p.id === installmentPlan)!;
   const selectedAmount = cart
@@ -175,23 +165,28 @@ export function CheckoutPage() {
         return;
       }
 
-      // Generate payment URL for online/installment payment
+      // VietQR: lấy link ảnh QR để hiển thị trên trang (không redirect)
       try {
-        let paymentData;
+        let paymentData: any;
         if (paymentMethod === "full") {
           paymentData = await createQrFullPayment();
         } else {
           paymentData = await createQrInstallmentPayment(selectedPlan.months);
         }
-
-        // If API returns a direct URL (VNPAY mock for testing)
-        if (paymentData.payment_url || (paymentData.qr_url && paymentData.qr_url.startsWith("http") && !paymentData.qr_url.includes("base64"))) {
-          const redirectUrl = paymentData.payment_url || paymentData.qr_url;
-          window.location.href = redirectUrl;
-          return;
+        const url =
+          paymentData?.payment_url ??
+          paymentData?.qr_url ??
+          paymentData?.image_url ??
+          paymentData?.url ??
+          paymentData?.data?.payment_url ??
+          paymentData?.data?.qr_url ??
+          paymentData?.data?.image_url ??
+          paymentData?.data?.url;
+        if (!url) {
+          console.warn("Payment QR response (no url found):", paymentData);
         }
-
-        setQrUrl(paymentData.qr_url);
+        setQrUrl(url || null);
+        setQrPaymentData(paymentData?.data ?? paymentData ?? null);
         setStep("qr");
       } catch (qrError) {
         console.error("Payment generation error:", qrError);
@@ -245,6 +240,31 @@ export function CheckoutPage() {
     );
   }
 
+  const handleConfirmPaid = async () => {
+    setIsConfirming(true);
+    try {
+      await confirmPayment();
+      await loadCart();
+      toast.success("Đã ghi nhận xác nhận thanh toán. Đơn hàng sẽ được duyệt bởi admin.");
+      setStep("success");
+      setTimeout(() => navigate("/"), 2000);
+    } catch (err: any) {
+      toast.error(err?.message || "Xác nhận thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  // Mã nội dung chuyển khoản để đối soát (dùng order_id)
+  const transferContentCode = orderId != null ? `ORDER${orderId}` : "";
+  const displayAmount = paymentMethod === "installment" ? totalWithInterest : subtotal;
+  const bankInfo = qrPaymentData as Record<string, unknown> | null;
+
+  // Luôn dùng thông tin tài khoản VietQR cố định
+  const VIETQR_ACCOUNT_NO = bankInfo?.accountNo ?? bankInfo?.account_no ?? "9931330034";
+  const VIETQR_ACCOUNT_NAME = bankInfo?.accountName ?? bankInfo?.account_name ?? "TRAN ANH TU";
+  const VIETQR_BANK_NAME = bankInfo?.bankName ?? bankInfo?.bank_name ?? "VCB – Vietcombank";
+
   if (step === "qr") {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -252,61 +272,137 @@ export function CheckoutPage() {
           items={[{ label: "Giỏ hàng", to: "/cart" }, { label: "Thanh toán" }]}
         />
 
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            Quét mã QR để thanh toán
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-center text-white">
+            Mã QR chuyển khoản ngân hàng
           </h1>
 
-          <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 backdrop-blur-sm rounded-xl border border-purple-500/30 p-8">
-            {qrUrl && (
-              <div className="mb-6">
-                <img
-                  src={qrUrl}
-                  alt="VietQR"
-                  className="w-full h-auto rounded-lg"
-                />
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,340px] gap-8 items-start">
+            {/* Trái: QR + thông tin chuyển khoản */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6 lg:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-lg font-semibold text-purple-300">VietQR</span>
               </div>
-            )}
 
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Số tiền:</span>
-                <span className="font-semibold">
-                  {subtotal.toLocaleString("vi-VN")}₫
-                </span>
-              </div>
-              {paymentMethod === "installment" && (
+              {qrUrl ? (
                 <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Hạn mức lãi:</span>
-                    <span className="font-semibold">
-                      {selectedPlan.interest}%
-                    </span>
+                  <div className="flex justify-center mb-8">
+                    <div className="w-[240px] h-[240px] rounded-xl overflow-hidden bg-white flex-shrink-0 border border-white/20">
+                      <img
+                        src={qrUrl}
+                        alt="Mã QR chuyển khoản"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Tổng cộng:</span>
-                    <span className="font-semibold">
-                      {totalWithInterest.toLocaleString("vi-VN")}₫
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Mỗi kỳ:</span>
-                    <span className="font-semibold">
-                      {monthlyPayment.toLocaleString("vi-VN")}₫
-                    </span>
+
+                  <p className="text-center text-gray-400 text-sm mb-8">
+                    Quét mã bằng app ngân hàng hoặc ví điện tử (napas 247)
+                  </p>
+
+                  <h2 className="text-lg font-semibold text-white mb-3">
+                    Thông tin chuyển khoản ngân hàng
+                  </h2>
+                  {transferContentCode && (
+                    <p className="text-red-400 text-sm font-medium mb-4">
+                      Vui lòng chuyển đúng nội dung <strong>{transferContentCode}</strong> để chúng tôi có thể xác nhận thanh toán.
+                    </p>
+                  )}
+                  <div className="overflow-hidden rounded-lg border border-white/10">
+                    <table className="w-full text-sm">
+                      <tbody className="divide-y divide-white/10">
+                        <tr className="bg-white/5">
+                          <td className="py-3 px-4 text-gray-400 w-[140px]">Tên tài khoản</td>
+                          <td className="py-3 px-4 text-white font-medium">
+                            {VIETQR_ACCOUNT_NAME}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-3 px-4 text-gray-400">Số tài khoản</td>
+                          <td className="py-3 px-4 text-white font-medium">
+                            {VIETQR_ACCOUNT_NO}
+                          </td>
+                        </tr>
+                        <tr className="bg-white/5">
+                          <td className="py-3 px-4 text-gray-400">Ngân hàng</td>
+                          <td className="py-3 px-4 text-white">
+                            {VIETQR_BANK_NAME}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="py-3 px-4 text-gray-400">Số tiền</td>
+                          <td className="py-3 px-4 text-white font-semibold">
+                            {displayAmount.toLocaleString("vi-VN")} ₫
+                          </td>
+                        </tr>
+                        <tr className="bg-white/5">
+                          <td className="py-3 px-4 text-gray-400">Nội dung</td>
+                          <td className="py-3 px-4 text-white font-mono font-semibold">
+                            {transferContentCode || "—"}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <Loader className="w-12 h-12 animate-spin mb-4" />
+                  <span>Đang tạo mã QR...</span>
+                </div>
               )}
             </div>
 
-            <p className="text-sm text-gray-400 text-center mb-6">
-              Vui lòng quét mã QR bằng ứng dụng ngân hàng hoặc ví điện tử của
-              bạn
-            </p>
-
-            <div className="text-center text-sm text-purple-300 bg-purple-500/10 rounded-lg p-4">
-              <Loader className="w-5 h-5 animate-spin mx-auto mb-2 text-purple-400" />
-              Sau khi thanh toán, hệ thống sẽ tự động cập nhật trạng thái đơn hàng.
+            {/* Phải: Thông tin đơn hàng */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6 lg:sticky lg:top-24">
+              <p className="text-green-400 font-medium mb-5">
+                Cảm ơn bạn. Đơn hàng của bạn đã được nhận.
+              </p>
+              <ul className="space-y-3 text-sm mb-6">
+                <li className="flex justify-between">
+                  <span className="text-gray-400">Mã đơn hàng</span>
+                  <span className="text-white font-semibold">#{orderId ?? "—"}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-400">Ngày</span>
+                  <span className="text-white">{new Date().toLocaleDateString("vi-VN")}</span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-400">Email</span>
+                  <span className="text-white truncate max-w-[160px]" title={formData.email}>{formData.email || "—"}</span>
+                </li>
+                <li className="flex justify-between pt-3 border-t border-white/10">
+                  <span className="text-gray-400">Tổng cộng</span>
+                  <span className="text-white font-bold text-lg">
+                    {displayAmount.toLocaleString("vi-VN")} ₫
+                  </span>
+                </li>
+                <li className="flex justify-between">
+                  <span className="text-gray-400">Phương thức thanh toán</span>
+                  <span className="text-white">
+                    {paymentMethod === "full"
+                      ? "Chuyển khoản ngân hàng (Quét mã QR)"
+                      : "Trả góp (Quét mã QR)"}
+                  </span>
+                </li>
+              </ul>
+              {qrUrl && (
+                <button
+                  type="button"
+                  onClick={handleConfirmPaid}
+                  disabled={isConfirming}
+                  className="w-full py-3 px-4 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                >
+                  {isConfirming ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin inline-block mr-2 align-middle" />
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    "Xác nhận đã thanh toán"
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -568,10 +664,10 @@ export function CheckoutPage() {
                     />
                     <div>
                       <p className="font-semibold">
-                        Thanh toán toàn bộ (VNPay)
+                        Thanh toán toàn bộ
                       </p>
                       <p className="text-sm text-gray-400">
-                        Thanh toán ngay qua cổng VNPay
+                        Thanh toán một lần bằng mã QR / chuyển khoản
                       </p>
                     </div>
                   </label>
@@ -597,7 +693,7 @@ export function CheckoutPage() {
                       className="w-4 h-4"
                     />
                     <div>
-                      <p className="font-semibold">Trả góp (VNPay)</p>
+                      <p className="font-semibold">Trả góp</p>
                       <p className="text-sm text-gray-400">
                         Chia đơn hàng thành nhiều kỳ thanh toán
                       </p>

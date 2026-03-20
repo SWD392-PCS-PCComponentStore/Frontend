@@ -24,7 +24,7 @@ import { ManagerDashboardPage } from "@/pages/manager/ManagerDashboardPage";
 import { ManagerProductsPage } from "@/pages/manager/ManagerProductsPage";
 import { ManagerCategoriesPage } from "@/pages/manager/ManagerCategoriesPage";
 import { ManagerPromotionsPage } from "@/pages/manager/ManagerPromotionsPage";
-import { AdminOrdersPage as ManagerOrdersPage } from "@/pages/admin/AdminOrdersPage";
+import { ManagerOrdersPage } from "@/pages/manager/ManagerOrdersPage";
 import { RequireRole } from "@/components/RequireRole";
 import { AuthModal } from "@/components/AuthModal";
 import { StaffPcBuildsPage } from "@/pages/staff/StaffPcBuildsPage";

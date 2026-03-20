@@ -55,25 +55,24 @@ export function PaymentPage() {
   ) => {
     try {
       setIsLoading(true);
-      let res;
-      if (type === "online") {
-        res = await createQrFullPayment();
-      } else {
-        res = await createQrInstallmentPayment(3); // Default to 3 months
-      }
+      // Backend trả { success, data: { payment_url, payment_id, ... } } — unwrap data
+      const res = type === "online"
+        ? await createQrFullPayment()
+        : await createQrInstallmentPayment(3);
+      const payload = res?.data ?? res;
 
       // If it's a redirect URL (VNPay mock)
       if (
-        res.payment_url ||
-        (res.qr_url &&
-          res.qr_url.startsWith("http") &&
-          !res.qr_url.includes("base64"))
+        payload.payment_url ||
+        (payload.qr_url &&
+          payload.qr_url.startsWith("http") &&
+          !payload.qr_url.includes("base64"))
       ) {
-        window.location.href = res.payment_url || res.qr_url;
+        window.location.href = payload.payment_url || payload.qr_url;
         return;
       }
 
-      setQrData(res);
+      setQrData(payload);
       setSelectedOrder(order);
       setShowQr(true);
     } catch (error: any) {
