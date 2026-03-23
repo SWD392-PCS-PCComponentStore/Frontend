@@ -70,6 +70,8 @@ export type OrderDetail = {
   shipping_address: string | null;
   payment_type: "One-time" | "Installment" | "COD";
   payment_method?: string | null;
+  payment_id?: number | null;
+  payment_status?: string | null;
   user_name?: string;
   user_email?: string;
   user_phone?: string | null;
@@ -97,15 +99,19 @@ export type PaymentInfo = {
   order_status?: string;
 };
 
-export type VietQRData = {
+export type VNPayData = {
   payment_id: number;
-  bank_info: {
+  payment_url?: string;
+  bank_info?: {
     bank_name: string;
     account_no: string;
   };
   total_amount: number;
-  qr_url: string;
+  qr_url?: string;
 };
+
+/** @deprecated Use VNPayData instead */
+export type VietQRData = VNPayData;
 
 export type InstallmentPlan = {
   id: string;

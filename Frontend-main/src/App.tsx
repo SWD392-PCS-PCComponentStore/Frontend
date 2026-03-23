@@ -12,6 +12,7 @@ import {
   ProfilePage,
   MyOrdersPage,
 } from "@/pages";
+import { PaymentSuccessPage } from "@/pages/PaymentSuccessPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 // import { AdminOrdersPage } from "@/pages/admin/AdminOrdersPage"; // Moved to manager
@@ -23,7 +24,7 @@ import { ManagerDashboardPage } from "@/pages/manager/ManagerDashboardPage";
 import { ManagerProductsPage } from "@/pages/manager/ManagerProductsPage";
 import { ManagerCategoriesPage } from "@/pages/manager/ManagerCategoriesPage";
 import { ManagerPromotionsPage } from "@/pages/manager/ManagerPromotionsPage";
-import { AdminOrdersPage as ManagerOrdersPage } from "@/pages/admin/AdminOrdersPage";
+import { ManagerOrdersPage } from "@/pages/manager/ManagerOrdersPage";
 import { RequireRole } from "@/components/RequireRole";
 import { AuthModal } from "@/components/AuthModal";
 import { StaffPcBuildsPage } from "@/pages/staff/StaffPcBuildsPage";
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="checkout" element={<CheckoutPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="orders" element={<MyOrdersPage />} />
+                <Route path="payment/success" element={<PaymentSuccessPage />} />
               </Route>
 
               <Route

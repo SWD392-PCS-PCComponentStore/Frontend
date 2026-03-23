@@ -8,7 +8,6 @@ import {
   LogOut,
   ChevronLeft,
   ShoppingCart,
-  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Toaster } from '@/components/Toaster';
